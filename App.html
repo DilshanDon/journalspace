@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>JournalSpace — Personal Notes App</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0e0e10;
+    --surface: #18181c;
+    --surface2: #222228;
+    --border: #2e2e36;
+    --accent: #c8f135;
+    --accent2: #5b8df6;
+    --text: #f0f0f4;
+    --muted: #7a7a8e;
+    --danger: #f15b5b;
+    --tag-bg: #1e2a10;
+    --tag-color: #c8f135;
+    --radius: 12px;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(200,241,53,0.04) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(91,141,246,0.05) 0%, transparent 50%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .shell {
+    position: relative; z-index: 1;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .logo {
+    font-family: var(--font-head);
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+
+  .logo span { color: var(--accent); }
+
+  .subtitle {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .stats {
+    display: flex;
+    gap: 20px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .stat strong {
+    font-family: var(--font-head);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+    display: block;
+    line-height: 1;
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .search-wrap svg {
+    position: absolute;
+    left: 14px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  input[type="text"], textarea, select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    outline: none;
+    transition: border-color .2s;
+  }
+
+  input[type="text"]:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+  }
+
+  #search { width: 100%; padding: 12px 14px 12px 40px; }
+
+  .filter-select { padding: 12px 14px; cursor: pointer; min-width: 140px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: var(--radius);
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .5px;
+    cursor: pointer;
+    border: none;
+    transition: all .18s;
+  }
+
+  .btn-primary { background: var(--accent); color: #0e0e10; }
+  .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+  .btn-ghost {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.7);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .overlay.active { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px;
+    width: 100%;
+    max-width: 520px;
+    animation: popIn .2s ease;
+  }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(.94) translateY(12px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal h2 {
+    font-family: var(--font-head);
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 24px;
+  }
+
+  .field { margin-bottom: 18px; }
+
+  .field label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .field input[type="text"], .field textarea, .field select { width: 100%; }
+  .field input[type="text"] { padding: 12px 14px; }
+  .field textarea { padding: 12px 14px; resize: vertical; min-height: 110px; line-height: 1.6; }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 24px;
+  }
+
+  .notes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .note-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color .2s, transform .2s;
+    animation: fadeUp .3s ease both;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .note-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity .2s;
+  }
+
+  .note-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+  .note-card:hover::before { opacity: 1; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .note-category {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .pin-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent2);
+    flex-shrink: 0;
+  }
+
+  .note-title {
+    font-family: var(--font-head);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .note-body {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .note-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .tag {
+    background: var(--tag-bg);
+    color: var(--tag-color);
+    border-radius: 6px;
+    padding: 3px 9px;
+    font-size: 11px;
+    letter-spacing: .5px;
+    cursor: pointer;
+    border: 1px solid rgba(200,241,53,.15);
+    transition: background .15s;
+  }
+  .tag:hover { background: rgba(200,241,53,.2); }
+  .tag.active-tag { background: rgba(200,241,53,.25); border-color: var(--accent); }
+
+  .note-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    gap: 8px;
+  }
+
+  .note-date { font-size: 10px; color: var(--muted); letter-spacing: .5px; }
+  .note-actions { display: flex; gap: 8px; }
+
+  .icon-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 6px 8px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all .15s;
+    display: flex; align-items: center;
+  }
+  .icon-btn:hover { border-color: var(--accent2); color: var(--accent2); background: rgba(91,141,246,.08); }
+  .icon-btn.del:hover { border-color: var(--danger); color: var(--danger); background: rgba(241,91,91,.08); }
+
+  .sort-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .count-label { font-size: 12px; color: var(--muted); letter-spacing: 1px; }
+  .count-label strong { color: var(--accent); }
+
+  .empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--muted);
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: .4; }
+  .empty h3 { font-family: var(--font-head); font-size: 20px; color: var(--text); margin-bottom: 8px; }
+  .empty p { font-size: 13px; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  @media (max-width: 500px) {
+    .modal { padding: 24px 18px; }
+    .stats { gap: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <header>
+    <div>
+      <div class="logo">Journal<span>Space</span></div>
+      <div class="subtitle">Personal Notes &amp; Journal — by Dilshan</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><strong id="stat-total">0</strong>entries</div>
+      <div class="stat"><strong id="stat-tags">0</strong>tags</div>
+      <div class="stat"><strong id="stat-cats">0</strong>categories</div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input type="text" id="search" placeholder="Search entries, tags, content…"/>
+    </div>
+    <select class="filter-select" id="filter-cat">
+      <option value="">All Categories</option>
+    </select>
+    <select class="filter-select" id="sort-by">
+      <option value="newest">Newest first</option>
+      <option value="oldest">Oldest first</option>
+      <option value="alpha">A → Z</option>
+    </select>
+    <button class="btn btn-primary" onclick="openModal()">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      New Entry
+    </button>
+  </div>
+
+  <div class="sort-bar">
+    <div class="count-label">Showing <strong id="visible-count">0</strong> entries</div>
+    <button class="btn btn-ghost" id="clear-filter" style="display:none;padding:8px 14px;font-size:11px;" onclick="clearFilters()">✕ Clear filters</button>
+  </div>
+
+  <div class="notes-grid" id="notes-grid"></div>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay" onclick="overlayClick(event)">
+  <div class="modal" id="modal">
+    <h2 id="modal-title">New Journal Entry</h2>
+
+    <div class="field">
+      <label>Title *</label>
+      <input type="text" id="f-title" placeholder="What's this entry about?" maxlength="80"/>
+    </div>
+    <div class="field">
+      <label>Content *</label>
+      <textarea id="f-body" placeholder="Write your thoughts, ideas, or anything else…" rows="5"></textarea>
+    </div>
+    <div class="field">
+      <label>Category</label>
+      <input type="text" id="f-cat" placeholder="e.g. Personal, Study, Ideas, Work…"/>
+    </div>
+    <div class="field">
+      <label>Tags <span style="font-size:10px;color:var(--muted)">(comma-separated)</span></label>
+      <input type="text" id="f-tags" placeholder="e.g. cs, motivation, project"/>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNote()">Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'journalspace_dilshan_v1';
+
+  // ── Edge case: corrupted localStorage data won't crash the app ──
+  // If JSON.parse fails (e.g. browser truncated the write, user tampered
+  // with DevTools storage), catch the error and return a clean empty array
+  // instead of throwing an unhandled exception that would blank the page.
+  function loadNotes() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    } catch (e) {
+      console.warn('JournalSpace: failed to parse stored data, starting fresh.', e);
+      return [];
+    }
+  }
+
+  function saveNotes(notes) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  }
+
+  let notes = loadNotes();
+  let editId = null;
+  let activeTag = null;
+
+  function openModal(id = null) {
+    editId = id;
+    document.getElementById('modal-title').textContent = id ? 'Edit Entry' : 'New Journal Entry';
+
+    if (id) {
+      const n = notes.find(n => n.id === id);
+      document.getElementById('f-title').value = n.title;
+      document.getElementById('f-body').value = n.body;
+      document.getElementById('f-cat').value = n.category || '';
+      document.getElementById('f-tags').value = (n.tags || []).join(', ');
+    } else {
+      ['f-title','f-body','f-cat','f-tags'].forEach(id => document.getElementById(id).value = '');
+    }
+
+    document.getElementById('overlay').classList.add('active');
+    setTimeout(() => document.getElementById('f-title').focus(), 100);
+  }
+
+  function closeModal() {
+    document.getElementById('overlay').classList.remove('active');
+    editId = null;
+  }
+
+  function overlayClick(e) {
+    if (e.target === document.getElementById('overlay')) closeModal();
+  }
+
+  function saveNote() {
+    const title = document.getElementById('f-title').value.trim();
+    const body  = document.getElementById('f-body').value.trim();
+    const cat   = document.getElementById('f-cat').value.trim();
+    const tags  = document.getElementById('f-tags').value
+                    .split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+
+    if (!title) { alert('Please enter a title.'); return; }
+    if (!body)  { alert('Please write some content.'); return; }
+
+    if (editId) {
+      const idx = notes.findIndex(n => n.id === editId);
+      notes[idx] = { ...notes[idx], title, body, category: cat, tags, updatedAt: Date.now() };
+    } else {
+      notes.unshift({
+        id: crypto.randomUUID(),
+        title, body, category: cat, tags,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      });
+    }
+
+    saveNotes(notes);
+    closeModal();
+    render();
+  }
+
+  function deleteNote(id) {
+    if (!confirm('Delete this entry? This cannot be undone.')) return;
+    notes = notes.filter(n => n.id !== id);
+    saveNotes(notes);
+    render();
+  }
+
+  function getFiltered() {
+    const q    = document.getElementById('search').value.toLowerCase();
+    const catF = document.getElementById('filter-cat').value;
+    const sort = document.getElementById('sort-by').value;
+
+    let filtered = notes.filter(n => {
+      const matchQ   = !q || n.title.toLowerCase().includes(q)
+                          || n.body.toLowerCase().includes(q)
+                          || (n.tags||[]).some(t => t.includes(q))
+                          || (n.category||'').toLowerCase().includes(q);
+      const matchCat = !catF || n.category === catF;
+      const matchTag = !activeTag || (n.tags||[]).includes(activeTag);
+      return matchQ && matchCat && matchTag;
+    });
+
+    if (sort === 'oldest') filtered.sort((a,b) => a.createdAt - b.createdAt);
+    else if (sort === 'alpha') filtered.sort((a,b) => a.title.localeCompare(b.title));
+    else filtered.sort((a,b) => b.updatedAt - a.updatedAt);
+
+    return filtered;
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function render() {
+    updateCategoryFilter();
+    updateStats();
+
+    const filtered = getFiltered();
+    const q    = document.getElementById('search').value;
+    const catF = document.getElementById('filter-cat').value;
+    const grid = document.getElementById('notes-grid');
+
+    document.getElementById('visible-count').textContent = filtered.length;
+    document.getElementById('clear-filter').style.display =
+      (q || catF || activeTag) ? 'inline-flex' : 'none';
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">📓</div>
+          <h3>${notes.length === 0 ? 'No entries yet' : 'Nothing matched'}</h3>
+          <p>${notes.length === 0
+            ? 'Press <strong>New Entry</strong> to write your first note.'
+            : 'Try a different search term or clear the filters.'}</p>
+        </div>`;
+      return;
+    }
+
+    grid.innerHTML = filtered.map((n, i) => {
+      const date = new Date(n.updatedAt || n.createdAt);
+      const dateStr = date.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+      const tags = (n.tags||[]).map(t =>
+        `<span class="tag${activeTag===t?' active-tag':''}" onclick="filterByTag('${escHtml(t)}')">#${escHtml(t)}</span>`
+      ).join('');
+
+      return `
+      <div class="note-card" style="animation-delay:${i*0.05}s">
+        ${n.category ? `<div class="note-category"><span class="pin-dot"></span>${escHtml(n.category)}</div>` : ''}
+        <div class="note-title">${escHtml(n.title)}</div>
+        <div class="note-body">${escHtml(n.body)}</div>
+        ${tags ? `<div class="note-tags">${tags}</div>` : ''}
+        <div class="note-footer">
+          <span class="note-date">${dateStr}</span>
+          <div class="note-actions">
+            <button class="icon-btn" title="Edit" onclick="openModal('${n.id}')">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button class="icon-btn del" title="Delete" onclick="deleteNote('${n.id}')">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/>
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function updateCategoryFilter() {
+    const cats = [...new Set(notes.map(n => n.category).filter(Boolean))].sort();
+    const sel = document.getElementById('filter-cat');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">All Categories</option>' +
+      cats.map(c => `<option value="${escHtml(c)}"${c===cur?' selected':''}>${escHtml(c)}</option>`).join('');
+  }
+
+  function updateStats() {
+    document.getElementById('stat-total').textContent = notes.length;
+    document.getElementById('stat-tags').textContent = new Set(notes.flatMap(n => n.tags||[])).size;
+    document.getElementById('stat-cats').textContent = new Set(notes.map(n => n.category).filter(Boolean)).size;
+  }
+
+  function filterByTag(tag) {
+    activeTag = activeTag === tag ? null : tag;
+    render();
+  }
+
+  function clearFilters() {
+    document.getElementById('search').value = '';
+    document.getElementById('filter-cat').value = '';
+    activeTag = null;
+    render();
+  }
+
+  document.getElementById('search').addEventListener('input', render);
+  document.getElementById('filter-cat').addEventListener('change', render);
+  document.getElementById('sort-by').addEventListener('change', render);
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
+    if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); openModal(); }
+  });
+
+  render();
+</script>
+</body>
+</html>
